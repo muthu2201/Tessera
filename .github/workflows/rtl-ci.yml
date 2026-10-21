@@ -20,10 +20,14 @@ jobs:
         run: vvp build/tessera_dispatcher.vvp
       - name: Compile and test command FIFO
         run: iverilog -g2012 -Wall -s tb_tessera_command_fifo -o build/tessera_command_fifo.vvp rtl/tessera_command_fifo.sv tb/tb_tessera_command_fifo.sv && vvp build/tessera_command_fifo.vvp
+      - name: Compile and test integrated command path
+        run: iverilog -g2012 -Wall -s tb_tessera_command_path -o build/tessera_command_path.vvp rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_command_path.sv tb/tb_tessera_command_path.sv && vvp build/tessera_command_path.vvp
       - name: Generic synthesis and structural checks
         run: yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv; hierarchy -check -top tessera_dispatcher; proc; check; synth -top tessera_dispatcher; check; stat'
       - name: Synthesize command FIFO
         run: yosys -p 'read_verilog -sv rtl/tessera_command_fifo.sv; hierarchy -check -top tessera_command_fifo; proc; check; synth -top tessera_command_fifo; check; stat'
+      - name: Synthesize integrated command path
+        run: yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_command_path.sv; hierarchy -check -top tessera_command_path; proc; check; synth -top tessera_command_path; check; stat'
       - name: Map design to Lattice ECP5
         run: yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv; synth_ecp5 -top tessera_dispatcher -json build/tessera_ecp5.json'
       - name: ECP5 place and route estimate
