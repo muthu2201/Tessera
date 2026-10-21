@@ -11,6 +11,6 @@ req=0; completion_ready=1; rst_n=0; repeat(2) tick(); rst_n=1; tick();
 // Hold the first completion at the output. Reusing its live tag must stall.
 completion_ready=0; @(negedge clk); req=4'b0001; tag_bus[0+:TW]=8'h55; operand_a_bus[0+:DW]=16'd1; operand_b_bus[0+:DW]=16'd2; timeout=0; #1; if(grant!==4'b0001) $fatal(1,"first dependency-tag request not accepted"); tick(); req=0; timeout=0; while(!completion_valid && timeout<20) begin tick(); timeout=timeout+1; end if(!completion_valid) $fatal(1,"held completion missing"); @(negedge clk); req=4'b0001; timeout=0; repeat(5) begin tick(); if(grant!=0) $fatal(1,"duplicate live tag was dispatched"); end
 // Consuming the first completion releases the tag; the waiting request can run.
-completion_ready=1; timeout=0; #1; if(grant!==4'b0001) $fatal(1,"tag was not released after completion"); tick(); req=0; timeout=0; while(!completion_valid && timeout<20) begin tick(); timeout=timeout+1; end if(!completion_valid||completion_tag!==8'h55||completion_result!==3) $fatal(1,"reissued tag result mismatch"); tick();
+completion_ready=1; tick(); #1; if(grant!==4'b0001) $fatal(1,"tag was not released after completion"); tick(); req=0; timeout=0; while(!completion_valid && timeout<20) begin tick(); timeout=timeout+1; end if(!completion_valid||completion_tag!==8'h55||completion_result!==3) $fatal(1,"reissued tag result mismatch"); tick();
 $display("PASS: vector execution, tagged completions, duplicate-tag dependency stall/release"); $finish; end
 endmodule
