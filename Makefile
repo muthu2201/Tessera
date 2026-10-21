@@ -16,6 +16,8 @@ test:
 	$(RUN) build/tessera_tensor_tile.vvp
 	$(SIM) -g2012 -Wall -s tb_tessera_dependency_scoreboard -o build/tessera_dependency_scoreboard.vvp rtl/tessera_dependency_scoreboard.sv tb/tb_tessera_dependency_scoreboard.sv
 	$(RUN) build/tessera_dependency_scoreboard.vvp
+	$(SIM) -g2012 -Wall -s tb_tessera_execution_system -o build/tessera_execution_system.vvp rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_dependency_scoreboard.sv rtl/tessera_vec_tile.sv rtl/tessera_tensor_tile.sv rtl/tessera_execution_system.sv tb/tb_tessera_execution_system.sv
+	$(RUN) build/tessera_execution_system.vvp
 
 synth:
 	$(YOSYS) -p 'read_verilog -sv rtl/tessera_dispatcher.sv; hierarchy -check -top tessera_dispatcher; proc; check; synth -top tessera_dispatcher; check; stat'
@@ -29,6 +31,7 @@ ecp5:
 	$(NEXTPNR_ECP5) --25k --package CABGA381 --speed 6 --json build/tessera_ecp5.json --textcfg build/tessera_ecp5.config --lpf-allow-unconstrained --freq 50
 	$(YOSYS) -p 'read_verilog -sv rtl/tessera_tensor_tile.sv; hierarchy -check -top tessera_tensor_tile; proc; check; synth -top tessera_tensor_tile; check; stat'
 	$(YOSYS) -p 'read_verilog -sv rtl/tessera_dependency_scoreboard.sv; hierarchy -check -top tessera_dependency_scoreboard; proc; check; synth -top tessera_dependency_scoreboard; check; stat'
+	$(YOSYS) -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_dependency_scoreboard.sv rtl/tessera_vec_tile.sv rtl/tessera_tensor_tile.sv rtl/tessera_execution_system.sv; hierarchy -check -top tessera_execution_system; proc; check; synth -top tessera_execution_system; check; stat'
 
 clean:
 	rm -rf build
