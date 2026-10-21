@@ -10,11 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Icarus Verilog
-        run: sudo apt-get update && sudo apt-get install -y iverilog
+      - name: Install Icarus Verilog and Yosys
+        run: sudo apt-get update && sudo apt-get install -y iverilog yosys
       - name: Prepare build directory
         run: mkdir -p build
       - name: Compile SystemVerilog
         run: iverilog -g2012 -Wall -s tb_tessera_dispatcher -o build/tessera_dispatcher.vvp rtl/tessera_dispatcher.sv tb/tb_tessera_dispatcher.sv
       - name: Run testbench
         run: vvp build/tessera_dispatcher.vvp
+      - name: Synthesis and structural checks
+        run: yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv; hierarchy -check -top tessera_dispatcher; proc; check; synth -top tessera_dispatcher; check; stat'
