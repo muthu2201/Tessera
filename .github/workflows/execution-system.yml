@@ -1,0 +1,17 @@
+name: Tessera Execution System CI
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  sim:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y iverilog
+      - run: iverilog -g2012 -Wall -s tb_tessera_execution_system -o /tmp/e.vvp rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_dependency_scoreboard.sv rtl/tessera_vec_tile.sv rtl/tessera_tensor_tile.sv rtl/tessera_execution_system.sv tb/tb_tessera_execution_system.sv && vvp /tmp/e.vvp
+  synth:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y yosys
+      - run: yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_dependency_scoreboard.sv rtl/tessera_vec_tile.sv rtl/tessera_tensor_tile.sv rtl/tessera_execution_system.sv; hierarchy -check -top tessera_execution_system; proc; check; synth -top tessera_execution_system; check; stat'
