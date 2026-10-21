@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 module tb_tessera_command_path;
   localparam N=4, OW=3, TW=8, CW=2, DEPTH=4;
-  logic clk=0, rst_n=0, req_ready=0, out_ready=0;
+  logic clk=0, rst_n=0, out_ready=0;
   logic [N-1:0] req=0, grant;
   logic [N*OW-1:0] op_bus=0;
   logic [N*TW-1:0] tag_bus=0;
@@ -18,9 +18,12 @@ module tb_tessera_command_path;
   initial begin
     repeat(2) tick(); rst_n=1; tick();
     req=4'b1111; out_ready=0;
+    for(i=0;i<N;i=i+1) begin
+      op_bus[i*OW +: OW]=i;
+      tag_bus[i*TW +: TW]=8'hA0+i;
+    end
     for(i=0;i<DEPTH;i=i+1) begin
       @(negedge clk);
-      op_bus[0 +: OW]=i; tag_bus[0 +: TW]=8'hA0+i;
       #1; if(grant==0) fail("expected command accepted while FIFO had space");
       tick();
     end
@@ -33,7 +36,7 @@ module tb_tessera_command_path;
       #1;
       if(!cmd_valid) fail("expected queued command while draining");
       if(cmd_client !== i[CW-1:0]) fail("round-robin client order lost in FIFO");
-      if(cmd_op !== (i % (1<<OW))) fail("queued op field mismatch");
+      if(cmd_op !== i[OW-1:0]) fail("queued op field mismatch");
       if(cmd_tag !== (8'hA0+i)) fail("queued tag field mismatch");
       tick();
     end
