@@ -16,10 +16,14 @@ jobs:
         run: mkdir -p build
       - name: Compile SystemVerilog
         run: iverilog -g2012 -Wall -s tb_tessera_dispatcher -o build/tessera_dispatcher.vvp rtl/tessera_dispatcher.sv tb/tb_tessera_dispatcher.sv
-      - name: Run directed and randomized testbench
+      - name: Run directed and randomized dispatcher testbench
         run: vvp build/tessera_dispatcher.vvp
+      - name: Compile and test command FIFO
+        run: iverilog -g2012 -Wall -s tb_tessera_command_fifo -o build/tessera_command_fifo.vvp rtl/tessera_command_fifo.sv tb/tb_tessera_command_fifo.sv && vvp build/tessera_command_fifo.vvp
       - name: Generic synthesis and structural checks
         run: yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv; hierarchy -check -top tessera_dispatcher; proc; check; synth -top tessera_dispatcher; check; stat'
+      - name: Synthesize command FIFO
+        run: yosys -p 'read_verilog -sv rtl/tessera_command_fifo.sv; hierarchy -check -top tessera_command_fifo; proc; check; synth -top tessera_command_fifo; check; stat'
       - name: Formal combinational safety proof
         run: yosys -p 'read_verilog -formal -sv rtl/tessera_dispatcher.sv formal/tessera_dispatcher_formal.sv; prep -top tessera_dispatcher_formal -flatten; async2sync; dffunmap; sat -verify -prove-asserts -set-def-inputs'
       - name: Map design to Lattice ECP5
