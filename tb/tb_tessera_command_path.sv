@@ -30,6 +30,9 @@ module tb_tessera_command_path;
     @(negedge clk); #1;
     if(occupancy!=DEPTH || grant!=0) fail("full FIFO must backpressure dispatcher");
     tick();
+    // Stop new requests before draining, otherwise the live requesters refill
+    // slots as they open and a bounded FIFO correctly never becomes empty.
+    req=0;
     // Drain and validate packed command fields in round-robin order.
     @(negedge clk); out_ready=1;
     for(i=0;i<DEPTH;i=i+1) begin
