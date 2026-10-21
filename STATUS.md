@@ -1,11 +1,12 @@
 # Status
 
 - [x] Initial dispatcher RTL written
-- [x] Self-checking testbench written
-- [x] GitHub Actions workflow configured
-- [ ] Local simulation result verified
-- [ ] GitHub CI run observed
-- [ ] FPGA synthesis and timing closure
+- [x] Directed testbench and initial CI pass
+- [x] CI workflow configured
+- [x] Randomized request/ready stress test added
+- [x] Yosys synthesis and structural check added to CI
+- [ ] New randomized simulation and synthesis run confirmed
+- [ ] FPGA-specific synthesis/timing closure
 - [ ] Hardware measurements
 
-No simulation or hardware pass is claimed until the relevant tool has actually executed the design. CI should compile the SystemVerilog and run the testbench on pushes, pull requests, or manual dispatch.
+The dispatcher is a small control-plane prototype. Passing Icarus and generic Yosys checks does not prove FPGA timing closure, deadlock freedom for a larger system, or performance/energy versus GPUs.
