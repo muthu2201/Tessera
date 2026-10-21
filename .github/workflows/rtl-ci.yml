@@ -30,6 +30,14 @@ jobs:
         run: iverilog -g2012 -Wall -s tb_tessera_vec_tile -o build/tessera_vec_tile.vvp rtl/tessera_vec_tile.sv tb/tb_tessera_vec_tile.sv && vvp build/tessera_vec_tile.vvp
       - name: Compile and test integrated vector system
         run: iverilog -g2012 -Wall -s tb_tessera_vec_system -o build/tessera_vec_system.vvp rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_vec_tile.sv rtl/tessera_vec_system.sv tb/tb_tessera_vec_system.sv && vvp build/tessera_vec_system.vvp
+      - name: Compile and test tensor tile
+        run: iverilog -g2012 -Wall -s tb_tessera_tensor_tile -o build/tessera_tensor_tile.vvp rtl/tessera_tensor_tile.sv tb/tb_tessera_tensor_tile.sv && vvp build/tessera_tensor_tile.vvp
+      - name: Synthesize tensor tile
+        run: yosys -p 'read_verilog -sv rtl/tessera_tensor_tile.sv; hierarchy -check -top tessera_tensor_tile; proc; check; synth -top tessera_tensor_tile; check; stat'
+      - name: Compile and test dependency scoreboard
+        run: iverilog -g2012 -Wall -s tb_tessera_dependency_scoreboard -o build/tessera_dependency_scoreboard.vvp rtl/tessera_dependency_scoreboard.sv tb/tb_tessera_dependency_scoreboard.sv && vvp build/tessera_dependency_scoreboard.vvp
+      - name: Synthesize dependency scoreboard
+        run: yosys -p 'read_verilog -sv rtl/tessera_dependency_scoreboard.sv; hierarchy -check -top tessera_dependency_scoreboard; proc; check; synth -top tessera_dependency_scoreboard; check; stat'
       - name: Synthesize integrated vector system
         run: yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_vec_tile.sv rtl/tessera_vec_system.sv; hierarchy -check -top tessera_vec_system; proc; check; synth -top tessera_vec_system; check; stat'
       - name: Synthesize real vector tile
