@@ -6,56 +6,71 @@ on:
 permissions:
   contents: read
 jobs:
-  dispatcher-test:
+  simulation:
+    name: Sim - ${{ matrix.suite }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        suite: [dispatcher, fifo, command-path, completion-queue, control-plane, vector-tile, vector-system, tensor-tile, dependency-scoreboard]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install simulator
+        run: sudo apt-get update && sudo apt-get install -y iverilog
+      - name: Run isolated test suite
+        shell: bash
+        run: |
+          mkdir -p build
+          case "${{ matrix.suite }}" in
+            dispatcher) iverilog -g2012 -Wall -s tb_tessera_dispatcher -o build/test.vvp rtl/tessera_dispatcher.sv tb/tb_tessera_dispatcher.sv && vvp build/test.vvp ;;
+            fifo) iverilog -g2012 -Wall -s tb_tessera_command_fifo -o build/test.vvp rtl/tessera_command_fifo.sv tb/tb_tessera_command_fifo.sv && vvp build/test.vvp ;;
+            command-path) iverilog -g2012 -Wall -s tb_tessera_command_path -o build/test.vvp rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_command_path.sv tb/tb_tessera_command_path.sv && vvp build/test.vvp ;;
+            completion-queue) iverilog -g2012 -Wall -s tb_tessera_completion_queue -o build/test.vvp rtl/tessera_command_fifo.sv rtl/tessera_completion_queue.sv tb/tb_tessera_completion_queue.sv && vvp build/test.vvp ;;
+            control-plane) iverilog -g2012 -Wall -s tb_tessera_control_plane -o build/test.vvp rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_command_path.sv rtl/tessera_completion_queue.sv rtl/tessera_control_plane.sv tb/tb_tessera_control_plane.sv && vvp build/test.vvp ;;
+            vector-tile) iverilog -g2012 -Wall -s tb_tessera_vec_tile -o build/test.vvp rtl/tessera_vec_tile.sv tb/tb_tessera_vec_tile.sv && vvp build/test.vvp ;;
+            vector-system) iverilog -g2012 -Wall -s tb_tessera_vec_system -o build/test.vvp rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_vec_tile.sv rtl/tessera_vec_system.sv tb/tb_tessera_vec_system.sv && vvp build/test.vvp ;;
+            tensor-tile) iverilog -g2012 -Wall -s tb_tessera_tensor_tile -o build/test.vvp rtl/tessera_tensor_tile.sv tb/tb_tessera_tensor_tile.sv && vvp build/test.vvp ;;
+            dependency-scoreboard) iverilog -g2012 -Wall -s tb_tessera_dependency_scoreboard -o build/test.vvp rtl/tessera_dependency_scoreboard.sv tb/tb_tessera_dependency_scoreboard.sv && vvp build/test.vvp ;;
+          esac
+  synthesis:
+    name: Synth - ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        target: [dispatcher, fifo, command-path, completion-queue, control-plane, vector-tile, vector-system, tensor-tile, dependency-scoreboard]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install synthesis tools
+        run: sudo apt-get update && sudo apt-get install -y yosys
+      - name: Synthesize and check structure
+        shell: bash
+        run: |
+          case "${{ matrix.target }}" in
+            dispatcher) yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv; hierarchy -check -top tessera_dispatcher; proc; check; synth -top tessera_dispatcher; check; stat' ;;
+            fifo) yosys -p 'read_verilog -sv rtl/tessera_command_fifo.sv; hierarchy -check -top tessera_command_fifo; proc; check; synth -top tessera_command_fifo; check; stat' ;;
+            command-path) yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_command_path.sv; hierarchy -check -top tessera_command_path; proc; check; synth -top tessera_command_path; check; stat' ;;
+            completion-queue) yosys -p 'read_verilog -sv rtl/tessera_command_fifo.sv rtl/tessera_completion_queue.sv; hierarchy -check -top tessera_completion_queue; proc; check; synth -top tessera_completion_queue; check; stat' ;;
+            control-plane) yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_command_path.sv rtl/tessera_completion_queue.sv rtl/tessera_control_plane.sv; hierarchy -check -top tessera_control_plane; proc; check; synth -top tessera_control_plane; check; stat' ;;
+            vector-tile) yosys -p 'read_verilog -sv rtl/tessera_vec_tile.sv; hierarchy -check -top tessera_vec_tile; proc; check; synth -top tessera_vec_tile; check; stat' ;;
+            vector-system) yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_vec_tile.sv rtl/tessera_vec_system.sv; hierarchy -check -top tessera_vec_system; proc; check; synth -top tessera_vec_system; check; stat' ;;
+            tensor-tile) yosys -p 'read_verilog -sv rtl/tessera_tensor_tile.sv; hierarchy -check -top tessera_tensor_tile; proc; check; synth -top tessera_tensor_tile; check; stat' ;;
+            dependency-scoreboard) yosys -p 'read_verilog -sv rtl/tessera_dependency_scoreboard.sv; hierarchy -check -top tessera_dependency_scoreboard; proc; check; synth -top tessera_dependency_scoreboard; check; stat' ;;
+          esac
+  fpga-estimate:
+    name: FPGA - ECP5 resource and timing estimate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install simulation and FPGA tools
-        run: sudo apt-get update && sudo apt-get install -y iverilog yosys nextpnr-ecp5
-      - name: Prepare build directory
-        run: mkdir -p build
-      - name: Compile SystemVerilog
-        run: iverilog -g2012 -Wall -s tb_tessera_dispatcher -o build/tessera_dispatcher.vvp rtl/tessera_dispatcher.sv tb/tb_tessera_dispatcher.sv
-      - name: Run directed and randomized dispatcher testbench
-        run: vvp build/tessera_dispatcher.vvp
-      - name: Compile and test command FIFO
-        run: iverilog -g2012 -Wall -s tb_tessera_command_fifo -o build/tessera_command_fifo.vvp rtl/tessera_command_fifo.sv tb/tb_tessera_command_fifo.sv && vvp build/tessera_command_fifo.vvp
-      - name: Compile and test integrated command path
-        run: iverilog -g2012 -Wall -s tb_tessera_command_path -o build/tessera_command_path.vvp rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_command_path.sv tb/tb_tessera_command_path.sv && vvp build/tessera_command_path.vvp
-      - name: Compile and test completion queue
-        run: iverilog -g2012 -Wall -s tb_tessera_completion_queue -o build/tessera_completion_queue.vvp rtl/tessera_command_fifo.sv rtl/tessera_completion_queue.sv tb/tb_tessera_completion_queue.sv && vvp build/tessera_completion_queue.vvp
-      - name: Compile and test end-to-end control plane
-        run: iverilog -g2012 -Wall -s tb_tessera_control_plane -o build/tessera_control_plane.vvp rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_command_path.sv rtl/tessera_completion_queue.sv rtl/tessera_control_plane.sv tb/tb_tessera_control_plane.sv && vvp build/tessera_control_plane.vvp
-      - name: Compile and test real vector tile
-        run: iverilog -g2012 -Wall -s tb_tessera_vec_tile -o build/tessera_vec_tile.vvp rtl/tessera_vec_tile.sv tb/tb_tessera_vec_tile.sv && vvp build/tessera_vec_tile.vvp
-      - name: Compile and test integrated vector system
-        run: iverilog -g2012 -Wall -s tb_tessera_vec_system -o build/tessera_vec_system.vvp rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_vec_tile.sv rtl/tessera_vec_system.sv tb/tb_tessera_vec_system.sv && vvp build/tessera_vec_system.vvp
-      - name: Compile and test tensor tile
-        run: iverilog -g2012 -Wall -s tb_tessera_tensor_tile -o build/tessera_tensor_tile.vvp rtl/tessera_tensor_tile.sv tb/tb_tessera_tensor_tile.sv && vvp build/tessera_tensor_tile.vvp
-      - name: Synthesize tensor tile
-        run: yosys -p 'read_verilog -sv rtl/tessera_tensor_tile.sv; hierarchy -check -top tessera_tensor_tile; proc; check; synth -top tessera_tensor_tile; check; stat'
-      - name: Compile and test dependency scoreboard
-        run: iverilog -g2012 -Wall -s tb_tessera_dependency_scoreboard -o build/tessera_dependency_scoreboard.vvp rtl/tessera_dependency_scoreboard.sv tb/tb_tessera_dependency_scoreboard.sv && vvp build/tessera_dependency_scoreboard.vvp
-      - name: Synthesize dependency scoreboard
-        run: yosys -p 'read_verilog -sv rtl/tessera_dependency_scoreboard.sv; hierarchy -check -top tessera_dependency_scoreboard; proc; check; synth -top tessera_dependency_scoreboard; check; stat'
-      - name: Synthesize integrated vector system
-        run: yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_vec_tile.sv rtl/tessera_vec_system.sv; hierarchy -check -top tessera_vec_system; proc; check; synth -top tessera_vec_system; check; stat'
-      - name: Synthesize real vector tile
-        run: yosys -p 'read_verilog -sv rtl/tessera_vec_tile.sv; hierarchy -check -top tessera_vec_tile; proc; check; synth -top tessera_vec_tile; check; stat'
-      - name: Generic synthesis and structural checks
-        run: yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv; hierarchy -check -top tessera_dispatcher; proc; check; synth -top tessera_dispatcher; check; stat'
-      - name: Synthesize command FIFO
-        run: yosys -p 'read_verilog -sv rtl/tessera_command_fifo.sv; hierarchy -check -top tessera_command_fifo; proc; check; synth -top tessera_command_fifo; check; stat'
-      - name: Synthesize integrated command path
-        run: yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_command_path.sv; hierarchy -check -top tessera_command_path; proc; check; synth -top tessera_command_path; check; stat'
-      - name: Synthesize completion queue
-        run: yosys -p 'read_verilog -sv rtl/tessera_command_fifo.sv rtl/tessera_completion_queue.sv; hierarchy -check -top tessera_completion_queue; proc; check; synth -top tessera_completion_queue; check; stat'
-      - name: Synthesize end-to-end control plane
-        run: yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_command_path.sv rtl/tessera_completion_queue.sv rtl/tessera_control_plane.sv; hierarchy -check -top tessera_control_plane; proc; check; synth -top tessera_control_plane; check; stat'
-      - name: Map design to Lattice ECP5
-        run: yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv; synth_ecp5 -top tessera_dispatcher -json build/tessera_ecp5.json'
-      - name: ECP5 place and route estimate
-        run: nextpnr-ecp5 --25k --package CABGA381 --speed 6 --json build/tessera_ecp5.json --textcfg build/tessera_ecp5.config --lpf-allow-unconstrained --freq 50
+      - name: Install FPGA tools
+        run: sudo apt-get update && sudo apt-get install -y yosys nextpnr-ecp5
+      - name: Map dispatcher and estimate placement
+        run: |
+          mkdir -p build
+          yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv; synth_ecp5 -top tessera_dispatcher -json build/tessera_ecp5.json'
+          nextpnr-ecp5 --25k --package CABGA381 --speed 6 --json build/tessera_ecp5.json --textcfg build/tessera_ecp5.config --lpf-allow-unconstrained --freq 50
       - name: Upload synthesis artifacts
         if: always()
         uses: actions/upload-artifact@v4
