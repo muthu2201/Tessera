@@ -1,0 +1,20 @@
+name: Tessera RTL CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dispatcher-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Icarus Verilog
+        run: sudo apt-get update && sudo apt-get install -y iverilog
+      - name: Prepare build directory
+        run: mkdir -p build
+      - name: Compile SystemVerilog
+        run: iverilog -g2012 -Wall -s tb_tessera_dispatcher -o build/tessera_dispatcher.vvp rtl/tessera_dispatcher.sv tb/tb_tessera_dispatcher.sv
+      - name: Run testbench
+        run: vvp build/tessera_dispatcher.vvp
