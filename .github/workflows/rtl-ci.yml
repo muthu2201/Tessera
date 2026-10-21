@@ -21,7 +21,7 @@ jobs:
       - name: Generic synthesis and structural checks
         run: yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv; hierarchy -check -top tessera_dispatcher; proc; check; synth -top tessera_dispatcher; check; stat'
       - name: Formal combinational safety proof
-        run: yosys -p 'read_verilog -formal -sv rtl/tessera_dispatcher.sv formal/tessera_dispatcher_formal.sv; prep -top tessera_dispatcher_formal -flatten; sat -verify -prove-asserts -set-def-inputs'
+        run: yosys -p 'read_verilog -formal -sv rtl/tessera_dispatcher.sv formal/tessera_dispatcher_formal.sv; prep -top tessera_dispatcher_formal -flatten; async2sync; dffunmap; sat -verify -prove-asserts -set-def-inputs'
       - name: Map design to Lattice ECP5
         run: yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv; synth_ecp5 -top tessera_dispatcher -json build/tessera_ecp5.json'
       - name: ECP5 place and route estimate
