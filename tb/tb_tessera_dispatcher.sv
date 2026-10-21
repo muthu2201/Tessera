@@ -11,6 +11,8 @@ module tb_tessera_dispatcher;
   logic [OW-1:0] cmd_op;
   logic [TW-1:0] cmd_tag;
   integer k;
+  integer seed;
+  integer accepted;
 
   always #5 clk = ~clk;
   tessera_dispatcher #(.N_CLIENTS(N), .OP_W(OW), .TAG_W(TW)) dut (.*);
@@ -22,10 +24,9 @@ module tb_tessera_dispatcher;
     req=0; op_bus=0; tag_bus=0; cmd_ready=0;
     repeat(2) tick(); rst_n=1; tick();
 
-    // Empty queues: no command and no grant.
     #1; if (cmd_valid || grant != 0) fail("empty queues must remain idle");
 
-    // Backpressure: valid command remains visible but no requester is granted.
+    // Backpressure preserves selected payload and must not advance rr_ptr.
     req=4'b0100; op_bus[2*OW +: OW]=3'd5; tag_bus[2*TW +: TW]=8'hA7;
     cmd_ready=0; #1;
     if (!cmd_valid || grant != 0 || cmd_client != 2 || cmd_op != 5 || cmd_tag != 8'hA7)
@@ -45,12 +46,36 @@ module tb_tessera_dispatcher;
       tick();
     end
 
-    // No duplicate grant when ready is low, even under sustained requests.
-    cmd_ready=0; #1;
-    if (grant != 0 || !cmd_valid) fail("grant asserted during backpressure");
-    tick(); if (grant != 0) fail("grant asserted during stalled cycle");
+    // Randomized request/ready pressure. Every grant must correspond to the
+    // selected requester, be one-hot, and be suppressed when not ready.
+    seed = 32'h51A7E123;
+    accepted = 0;
+    for (k=0; k<250; k=k+1) begin
+      @(negedge clk);
+      req = $random(seed);
+      cmd_ready = ($random(seed) & 1);
+      op_bus = {$random(seed), $random(seed)};
+      tag_bus = {$random(seed), $random(seed)};
+      #1;
+      if (cmd_valid && cmd_ready) begin
+        if (grant !== (1 << cmd_client)) fail("random test: grant not one-hot");
+        if (!req[cmd_client]) fail("random test: granted client did not request");
+        if (cmd_op !== op_bus[cmd_client*OW +: OW]) fail("random test: op payload mismatch");
+        if (cmd_tag !== tag_bus[cmd_client*TW +: TW]) fail("random test: tag payload mismatch");
+        accepted = accepted + 1;
+      end else if (grant !== 0) begin
+        fail("random test: grant during backpressure or invalid");
+      end
+      tick();
+    end
+    if (accepted == 0) fail("random test accepted no commands");
 
-    $display("PASS: empty, payload, backpressure, one-hot grant, round-robin tests");
+    // Asynchronous reset returns arbitration priority to client zero.
+    @(negedge clk); rst_n=0; req=4'b1111; cmd_ready=1; #1;
+    if (cmd_client !== 0) fail("reset did not restore client-zero priority");
+    tick(); rst_n=1; tick();
+
+    $display("PASS: directed + randomized dispatcher tests; accepted=%0d", accepted);
     $finish;
   end
 endmodule
