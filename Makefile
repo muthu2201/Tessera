@@ -27,9 +27,8 @@ ecp5:
 	mkdir -p build
 	$(YOSYS) -p 'read_verilog -sv rtl/tessera_dispatcher.sv; synth_ecp5 -top tessera_dispatcher -json build/tessera_ecp5.json'
 	$(NEXTPNR_ECP5) --25k --package CABGA381 --speed 6 --json build/tessera_ecp5.json --textcfg build/tessera_ecp5.config --lpf-allow-unconstrained --freq 50
+	$(YOSYS) -p 'read_verilog -sv rtl/tessera_tensor_tile.sv; hierarchy -check -top tessera_tensor_tile; proc; check; synth -top tessera_tensor_tile; check; stat'
+	$(YOSYS) -p 'read_verilog -sv rtl/tessera_dependency_scoreboard.sv; hierarchy -check -top tessera_dependency_scoreboard; proc; check; synth -top tessera_dependency_scoreboard; check; stat'
 
 clean:
 	rm -rf build
-
-	$(YOSYS) -p 'read_verilog -sv rtl/tessera_tensor_tile.sv; hierarchy -check -top tessera_tensor_tile; proc; check; synth -top tessera_tensor_tile; check; stat'
-	$(YOSYS) -p 'read_verilog -sv rtl/tessera_dependency_scoreboard.sv; hierarchy -check -top tessera_dependency_scoreboard; proc; check; synth -top tessera_dependency_scoreboard; check; stat'
