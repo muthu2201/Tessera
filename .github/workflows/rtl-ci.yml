@@ -28,6 +28,10 @@ jobs:
         run: iverilog -g2012 -Wall -s tb_tessera_control_plane -o build/tessera_control_plane.vvp rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_command_path.sv rtl/tessera_completion_queue.sv rtl/tessera_control_plane.sv tb/tb_tessera_control_plane.sv && vvp build/tessera_control_plane.vvp
       - name: Compile and test real vector tile
         run: iverilog -g2012 -Wall -s tb_tessera_vec_tile -o build/tessera_vec_tile.vvp rtl/tessera_vec_tile.sv tb/tb_tessera_vec_tile.sv && vvp build/tessera_vec_tile.vvp
+      - name: Compile and test integrated vector system
+        run: iverilog -g2012 -Wall -s tb_tessera_vec_system -o build/tessera_vec_system.vvp rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_vec_tile.sv rtl/tessera_vec_system.sv tb/tb_tessera_vec_system.sv && vvp build/tessera_vec_system.vvp
+      - name: Synthesize integrated vector system
+        run: yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_vec_tile.sv rtl/tessera_vec_system.sv; hierarchy -check -top tessera_vec_system; proc; check; synth -top tessera_vec_system; check; stat'
       - name: Synthesize real vector tile
         run: yosys -p 'read_verilog -sv rtl/tessera_vec_tile.sv; hierarchy -check -top tessera_vec_tile; proc; check; synth -top tessera_vec_tile; check; stat'
       - name: Generic synthesis and structural checks
