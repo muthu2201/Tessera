@@ -8,9 +8,12 @@ test:
 	mkdir -p build
 	$(SIM) -g2012 -Wall -s tb_tessera_dispatcher -o build/tessera_dispatcher.vvp rtl/tessera_dispatcher.sv tb/tb_tessera_dispatcher.sv
 	$(RUN) build/tessera_dispatcher.vvp
+	$(SIM) -g2012 -Wall -s tb_tessera_command_fifo -o build/tessera_command_fifo.vvp rtl/tessera_command_fifo.sv tb/tb_tessera_command_fifo.sv
+	$(RUN) build/tessera_command_fifo.vvp
 
 synth:
 	$(YOSYS) -p 'read_verilog -sv rtl/tessera_dispatcher.sv; hierarchy -check -top tessera_dispatcher; proc; check; synth -top tessera_dispatcher; check; stat'
+	$(YOSYS) -p 'read_verilog -sv rtl/tessera_command_fifo.sv; hierarchy -check -top tessera_command_fifo; proc; check; synth -top tessera_command_fifo; check; stat'
 
 ecp5:
 	mkdir -p build
