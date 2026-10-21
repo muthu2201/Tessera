@@ -10,13 +10,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Icarus Verilog and Yosys
-        run: sudo apt-get update && sudo apt-get install -y iverilog yosys
+      - name: Install simulation and FPGA tools
+        run: sudo apt-get update && sudo apt-get install -y iverilog yosys nextpnr-ecp5
       - name: Prepare build directory
         run: mkdir -p build
       - name: Compile SystemVerilog
         run: iverilog -g2012 -Wall -s tb_tessera_dispatcher -o build/tessera_dispatcher.vvp rtl/tessera_dispatcher.sv tb/tb_tessera_dispatcher.sv
-      - name: Run testbench
+      - name: Run directed and randomized testbench
         run: vvp build/tessera_dispatcher.vvp
-      - name: Synthesis and structural checks
+      - name: Generic synthesis and structural checks
         run: yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv; hierarchy -check -top tessera_dispatcher; proc; check; synth -top tessera_dispatcher; check; stat'
+      - name: Map design to Lattice ECP5
+        run: yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv; synth_ecp5 -top tessera_dispatcher -json build/tessera_ecp5.json'
+      - name: ECP5 place and route estimate
+        run: nextpnr-ecp5 --25k --package CABGA381 --speed 6 --json build/tessera_ecp5.json --textcfg build/tessera_ecp5.config --lpf-allow-unconstrained --freq 50
+      - name: Upload synthesis artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tessera-ecp5-build
+          path: |
+            build/tessera_ecp5.json
+            build/tessera_ecp5.config
+          if-no-files-found: ignore
