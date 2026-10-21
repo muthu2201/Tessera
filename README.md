@@ -15,6 +15,10 @@ The first open-source implementation target is **Lattice ECP5 LFE5U-25F, CABGA38
 
 This is a small control-plane validation target, not the final Tessera accelerator. CI currently allows unconstrained I/O because no specific development board or pin map has been selected. Therefore the result is a device-level placement/routing estimate, not a board-ready bitstream or verified timing closure under real board constraints.
 
+## Command contract
+
+The prototype record layout, provisional operation classes, ready/valid behavior, and current limitations are documented in [`docs/COMMAND_FORMAT.md`](docs/COMMAND_FORMAT.md).
+
 ## Run locally
 
 Install Icarus Verilog, Yosys, and nextpnr-ecp5, then run:
