@@ -29,7 +29,7 @@ jobs:
             completion-queue) iverilog -g2012 -Wall -s tb_tessera_completion_queue -o build/test.vvp rtl/tessera_command_fifo.sv rtl/tessera_completion_queue.sv tb/tb_tessera_completion_queue.sv && vvp build/test.vvp ;;
             control-plane) iverilog -g2012 -Wall -s tb_tessera_control_plane -o build/test.vvp rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_command_path.sv rtl/tessera_completion_queue.sv rtl/tessera_control_plane.sv tb/tb_tessera_control_plane.sv && vvp build/test.vvp ;;
             vector-tile) iverilog -g2012 -Wall -s tb_tessera_vec_tile -o build/test.vvp rtl/tessera_vec_tile.sv tb/tb_tessera_vec_tile.sv && vvp build/test.vvp ;;
-            vector-system) iverilog -g2012 -Wall -s tb_tessera_vec_system -o build/test.vvp rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_vec_tile.sv rtl/tessera_vec_system.sv tb/tb_tessera_vec_system.sv && vvp build/test.vvp ;;
+            vector-system) iverilog -g2012 -Wall -s tb_tessera_vec_system -o build/test.vvp rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_dependency_scoreboard.sv rtl/tessera_vec_tile.sv rtl/tessera_vec_system.sv tb/tb_tessera_vec_system.sv && vvp build/test.vvp ;;
             tensor-tile) iverilog -g2012 -Wall -s tb_tessera_tensor_tile -o build/test.vvp rtl/tessera_tensor_tile.sv tb/tb_tessera_tensor_tile.sv && vvp build/test.vvp ;;
             dependency-scoreboard) iverilog -g2012 -Wall -s tb_tessera_dependency_scoreboard -o build/test.vvp rtl/tessera_dependency_scoreboard.sv tb/tb_tessera_dependency_scoreboard.sv && vvp build/test.vvp ;;
           esac
@@ -55,7 +55,7 @@ jobs:
             completion-queue) yosys -p 'read_verilog -sv rtl/tessera_command_fifo.sv rtl/tessera_completion_queue.sv; hierarchy -check -top tessera_completion_queue; proc; check; synth -top tessera_completion_queue; check; stat' ;;
             control-plane) yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_command_path.sv rtl/tessera_completion_queue.sv rtl/tessera_control_plane.sv; hierarchy -check -top tessera_control_plane; proc; check; synth -top tessera_control_plane; check; stat' ;;
             vector-tile) yosys -p 'read_verilog -sv rtl/tessera_vec_tile.sv; hierarchy -check -top tessera_vec_tile; proc; check; synth -top tessera_vec_tile; check; stat' ;;
-            vector-system) yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_vec_tile.sv rtl/tessera_vec_system.sv; hierarchy -check -top tessera_vec_system; proc; check; synth -top tessera_vec_system; check; stat' ;;
+            vector-system) yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_dependency_scoreboard.sv rtl/tessera_vec_tile.sv rtl/tessera_vec_system.sv; hierarchy -check -top tessera_vec_system; proc; check; synth -top tessera_vec_system; check; stat' ;;
             tensor-tile) yosys -p 'read_verilog -sv rtl/tessera_tensor_tile.sv; hierarchy -check -top tessera_tensor_tile; proc; check; synth -top tessera_tensor_tile; check; stat' ;;
             dependency-scoreboard) yosys -p 'read_verilog -sv rtl/tessera_dependency_scoreboard.sv; hierarchy -check -top tessera_dependency_scoreboard; proc; check; synth -top tessera_dependency_scoreboard; check; stat' ;;
           esac
