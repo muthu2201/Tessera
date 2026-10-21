@@ -15,6 +15,7 @@ synth:
 	$(YOSYS) -p 'read_verilog -sv rtl/tessera_dispatcher.sv; hierarchy -check -top tessera_dispatcher; proc; check; synth -top tessera_dispatcher; check; stat'
 	$(YOSYS) -p 'read_verilog -sv rtl/tessera_command_fifo.sv; hierarchy -check -top tessera_command_fifo; proc; check; synth -top tessera_command_fifo; check; stat'
 	$(YOSYS) -p 'read_verilog -sv rtl/tessera_command_fifo.sv rtl/tessera_completion_queue.sv; hierarchy -check -top tessera_completion_queue; proc; check; synth -top tessera_completion_queue; check; stat'
+	$(YOSYS) -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_vec_tile.sv rtl/tessera_vec_system.sv; hierarchy -check -top tessera_vec_system; proc; check; synth -top tessera_vec_system; check; stat'
 
 ecp5:
 	mkdir -p build
