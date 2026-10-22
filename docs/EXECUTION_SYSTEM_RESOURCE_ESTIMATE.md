@@ -34,7 +34,7 @@ The dedicated [Execution System CI](https://github.com/muthu2201/Tessera/actions
 ## Single-client FPGA shell place-and-route experiment
 
 Date: 2026-10-22  
-RTL revision: `9f2698b39c8abf3615da9241bab47a7f9f9697b9`  
+RTL revision: `2b9f1732f17055da6af146eb47b1ceb6ba9b2663`  
 Top module: `tessera_execution_system_fpga_shell`  
 Tool flow: Yosys 0.33 `synth_ecp5` + nextpnr-ecp5, ECP5-25K / CABGA381 / speed grade 6
 
@@ -44,12 +44,15 @@ Tool flow: Yosys 0.33 `synth_ecp5` + nextpnr-ecp5, ECP5-25K / CABGA381 / speed g
 | Flip-flops | 405 / 24,288 (1%) |
 | Hard multipliers | 3 / 28 (10%) |
 | I/O cells | 128 / 197 (64%) |
-| nextpnr estimated max frequency, placement | 35.94 MHz |
+| nextpnr estimated max frequency, placement | 35.94 MHz (initial 12 MHz-target run) |
 | nextpnr estimated max frequency, after routing | 46.80 MHz |
+| Explicit nextpnr target | 40 MHz, PASS after routing |
 | Routing | Completed |
 
 The shell's physical interface fits this package, unlike the raw four-client top-level interface, which required 363 I/O cells against 197 available and failed placement. The single-client shell exposes one requester's command and data buses while retaining the shared vector/tensor core.
 
-**Important limitations:** This run uses `--lpf-allow-unconstrained` and no board-specific pin assignment or clock constraint. nextpnr reports a derived 12 MHz target and estimated frequencies; these are exploratory tool estimates, not timing sign-off or proof of board operation. The reported routed estimate is not a substitute for applying the intended board's LPF constraints and validating its actual clock and I/O timing.
+**40 MHz target follow-up:** Commit `2b9f1732f17055da6af146eb47b1ceb6ba9b2663` added an explicit `--freq 40` constraint to the nextpnr command. The place-route job completed successfully and reported a post-route maximum frequency of 46.80 MHz, PASS at 40.00 MHz. [Execution System CI run](https://github.com/muthu2201/Tessera/actions/runs/39717448064) and [full RTL CI run](https://github.com/muthu2201/Tessera/actions/runs/39717448094) both passed.
 
-Reproduction artifact and job logs: [Execution System CI run](https://github.com/muthu2201/Tessera/actions/runs/39717272231), artifact `tessera-single-client-shell-ecp5-place-route`.
+**Important limitations:** This run uses `--lpf-allow-unconstrained` and no board-specific pin assignment or clock constraint. The 40 MHz result is an exploratory estimate, not timing sign-off or proof of board operation. Apply the intended board's LPF constraints and validate its actual clock and I/O timing before claiming hardware readiness.
+
+Reproduction artifact and job logs: [latest Execution System CI run](https://github.com/muthu2201/Tessera/actions/runs/39717448064), artifact `tessera-single-client-shell-ecp5-place-route`.
