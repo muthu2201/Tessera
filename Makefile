@@ -2,7 +2,7 @@ SIM ?= iverilog
 RUN ?= vvp
 YOSYS ?= yosys
 NEXTPNR_ECP5 ?= nextpnr-ecp5
-.PHONY: test synth ecp5 clean
+.PHONY: test software-test synth ecp5 clean
 
 test:
 	mkdir -p build
@@ -18,6 +18,9 @@ test:
 	$(RUN) build/tessera_dependency_scoreboard.vvp
 	$(SIM) -g2012 -Wall -s tb_tessera_execution_system -o build/tessera_execution_system.vvp rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_dependency_scoreboard.sv rtl/tessera_vec_tile.sv rtl/tessera_tensor_tile.sv rtl/tessera_execution_system.sv tb/tb_tessera_execution_system.sv
 	$(RUN) build/tessera_execution_system.vvp
+
+software-test:
+	python3 -m unittest discover -s software -p 'test_*.py' -v
 
 synth:
 	$(YOSYS) -p 'read_verilog -sv rtl/tessera_dispatcher.sv; hierarchy -check -top tessera_dispatcher; proc; check; synth -top tessera_dispatcher; check; stat'
