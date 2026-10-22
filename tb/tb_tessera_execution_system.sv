@@ -12,7 +12,8 @@ module tb_tessera_execution_system;
   logic [1:0] completion_status;
   logic [AW-1:0] completion_result;
   logic [$clog2(D+1)-1:0] completion_occupancy;
-  integer timeout;
+  integer timeout, i;
+  logic signed [15:0] stress_a, stress_b, stress_expected;
   logic seen0, seen1;
   always #5 clk=~clk;
   tessera_execution_system dut(.*);
@@ -142,7 +143,27 @@ module tb_tessera_execution_system;
        completion_status!==1 || completion_result!==0)
       $fatal(1,"invalid tensor opcode did not return the expected error");
     tick();
-    $display("PASS shared routing, concurrent clients, signed MAC, backpressure, live-tag reuse, and invalid-op errors");
+
+    // Deterministic arithmetic stress: signed addition, wraparound, and tag integrity.
+    // Keep each request isolated so any mismatch identifies a specific transaction.
+    for(i=0;i<16;i=i+1) begin
+      stress_a = (i*7919)-30000;
+      stress_b = 25000-(i*3571);
+      stress_expected = stress_a + stress_b;
+      op_bus[0+:OW]=0;
+      tag_bus[0+:TW]=8'h60+i;
+      operand_a_bus[0+:DW]=stress_a;
+      operand_b_bus[0+:DW]=stress_b;
+      @(negedge clk); req=1; #1;
+      if(grant!==1) $fatal(1,"stress add request %0d not accepted",i);
+      tick(); req=0; wait_completion(20);
+      if(completion_client!==0 || completion_tag!==(8'h60+i) ||
+         completion_result!=={{(AW-DW){stress_expected[DW-1]}},stress_expected} ||
+         completion_status!==0)
+        $fatal(1,"stress add mismatch at transaction %0d",i);
+      tick();
+    end
+    $display("PASS shared routing, concurrent clients, signed MAC, backpressure, live-tag reuse, invalid-op errors, and 16 deterministic arithmetic stress cases");
     $finish;
   end
 endmodule
