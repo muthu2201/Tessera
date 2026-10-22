@@ -14,4 +14,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y yosys
-      - run: yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_dependency_scoreboard.sv rtl/tessera_vec_tile.sv rtl/tessera_tensor_tile.sv rtl/tessera_execution_system.sv; hierarchy -check -top tessera_execution_system; proc; check; synth -top tessera_execution_system; check; stat'
+      - name: Generic synthesis and cell statistics
+        shell: bash
+        run: |
+          set -o pipefail
+          yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_dependency_scoreboard.sv rtl/tessera_vec_tile.sv rtl/tessera_tensor_tile.sv rtl/tessera_execution_system.sv; hierarchy -check -top tessera_execution_system; proc; check; synth -top tessera_execution_system; check; stat' 2>&1 | tee /tmp/tessera-generic-synth.log
+      - name: ECP5 mapping resource estimate
+        id: ecp5
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_dependency_scoreboard.sv rtl/tessera_vec_tile.sv rtl/tessera_tensor_tile.sv rtl/tessera_execution_system.sv; hierarchy -check -top tessera_execution_system; synth_ecp5 -top tessera_execution_system; stat' 2>&1 | tee /tmp/tessera-ecp5-synth.log
+      - name: Upload synthesis reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tessera-execution-system-synthesis-reports
+          path: |
+            /tmp/tessera-generic-synth.log
+            /tmp/tessera-ecp5-synth.log
+          if-no-files-found: warn
+          retention-days: 30
