@@ -56,3 +56,16 @@ The shell's physical interface fits this package, unlike the raw four-client top
 **Important limitations:** This run uses `--lpf-allow-unconstrained` and no board-specific pin assignment or clock constraint. The 40 MHz result is an exploratory estimate, not timing sign-off or proof of board operation. Apply the intended board's LPF constraints and validate its actual clock and I/O timing before claiming hardware readiness.
 
 Reproduction artifact and job logs: [latest Execution System CI run](https://github.com/muthu2201/Tessera/actions/runs/39717448064), artifact `tessera-single-client-shell-ecp5-place-route`.
+
+
+## Latest scoreboard optimization validation
+
+Date: 2026-10-22  
+RTL revision: `04ef6a4eeafaccbee296257631b8c7a7bcddb6f3`  
+Change: permit same-cycle reuse of a scoreboard slot released by a known completion, including when the scoreboard is full.
+
+The regression test fills all eight slots in its reduced test configuration, verifies that allocation remains blocked without a completion, then presents a known completion and a new allocation together. It checks that the replacement tag is tracked and that the live count remains constant. Both [Execution System CI run 39723253627](https://github.com/muthu2201/Tessera/actions/runs/39723253627) and [full RTL CI run 39723253574](https://github.com/muthu2201/Tessera/actions/runs/39723253574) passed.
+
+The latest full execution-system ECP5 mapping reported 3,898 LUT4 cells, 957 flip-flops, and 3 hard multipliers; Yosys `check` reported zero problems. The single-client shell place-and-route run reported a post-route estimated maximum frequency of 45.59 MHz, passing the exploratory 40 MHz target. See the linked CI run for the exact logs and artifacts.
+
+These figures are from CI's exploratory configuration. The timing run still permits unconstrained I/O and has no board-specific pin or clock/I/O timing constraints. The result is not timing sign-off or physical-board validation.
