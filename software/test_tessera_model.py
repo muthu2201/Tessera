@@ -1,3 +1,4 @@
+import random
 import unittest
 
 from tessera_model import Command, Completion, execute
@@ -40,6 +41,43 @@ class TesseraModelTests(unittest.TestCase):
     def test_client_and_tag_are_preserved(self):
         result = self.run_cmd("tensor", 0, 7, 9, client=3, tag=0x42)
         self.assertEqual(result, Completion(3, 0x42, 0, 63))
+
+    def test_deterministic_randomized_arithmetic_properties(self):
+        rng = random.Random(0x7E55E2A)
+        for _ in range(1000):
+            a = rng.randrange(-32768, 32768)
+            b = rng.randrange(-32768, 32768)
+            acc = rng.randrange(-(1 << 31), 1 << 31)
+            client = rng.randrange(4)
+            tag = rng.randrange(256)
+
+            add = execute(Command(client, "vec", 0, tag, a, b))
+            self.assertEqual(add.result, ((a + b) & 0xFFFF))
+            if add.result & 0x8000:
+                self.assertEqual(add.result, 0xFFFF0000 | (add.result & 0xFFFF))
+            else:
+                self.assertLessEqual(add.result, 0x7FFF)
+
+            mul_low = execute(Command(client, "vec", 1, tag, a, b))
+            low = (a * b) & 0xFFFF
+            expected_low = low | (0xFFFF0000 if low & 0x8000 else 0)
+            self.assertEqual(mul_low.result, expected_low)
+
+            vmin = execute(Command(client, "vec", 2, tag, a, b))
+            vmax = execute(Command(client, "vec", 3, tag, a, b))
+            self.assertEqual(vmin.result, min(a, b) & 0xFFFFFFFF)
+            self.assertEqual(vmax.result, max(a, b) & 0xFFFFFFFF)
+
+            vxor = execute(Command(client, "vec", 4, tag, a, b))
+            xor16 = (a & 0xFFFF) ^ (b & 0xFFFF)
+            self.assertEqual(vxor.result, xor16 | (0xFFFF0000 if xor16 & 0x8000 else 0))
+
+            product = execute(Command(client, "tensor", 0, tag, a, b))
+            self.assertEqual(product.result, (a * b) & 0xFFFFFFFF)
+            mac = execute(Command(client, "tensor", 1, tag, a, b, acc))
+            self.assertEqual(mac.result, (acc + a * b) & 0xFFFFFFFF)
+            for result in (add, mul_low, vmin, vmax, vxor, product, mac):
+                self.assertEqual((result.client, result.tag, result.status), (client, tag, 0))
 
 
 if __name__ == "__main__":
