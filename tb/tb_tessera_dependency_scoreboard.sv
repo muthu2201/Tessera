@@ -67,6 +67,8 @@ module tb_tessera_dependency_scoreboard;
     complete(0,8'h02);
     complete(0,8'h03);
     complete(0,8'h04);
+    complete(0,8'h05);
+    complete(0,8'h06);
     complete(3,8'h99);
     if(live_count!=0 || live_bitmap!='0) $fatal(1,"scoreboard failed to drain cleanly");
     $display("PASS scoreboard: client-scoped tags, unknown completions, duplicate blocking, full-capacity backpressure, slot reuse");
