@@ -13,6 +13,7 @@ module tb_tessera_execution_system;
   logic [AW-1:0] completion_result;
   logic [$clog2(D+1)-1:0] completion_occupancy;
   integer timeout, i, stress_seen_vec, stress_seen_tensor;
+  logic accept_vec, accept_tensor;
   logic signed [15:0] stress_a, stress_b, stress_expected;
   logic signed [31:0] tensor_expected;
   logic seen0, seen1;
@@ -177,13 +178,15 @@ module tb_tessera_execution_system;
       accumulator_bus[2*AW+:AW]=i*100-30;
       unit_select_bus[2]=1;
       @(negedge clk); req=5; timeout=0;
-      while(req!=0 && timeout<8) begin
-        #1;
-        if(grant[0]) req[0]=0;
-        if(grant[2]) req[2]=0;
-        tick(); timeout=timeout+1;
+      accept_vec=0; accept_tensor=0;
+      while((!accept_vec || !accept_tensor) && timeout<8) begin
+        #1; accept_vec=accept_vec || grant[0]; accept_tensor=accept_tensor || grant[2];
+        tick();
+        if(accept_vec) req[0]=0;
+        if(accept_tensor) req[2]=0;
+        timeout=timeout+1;
       end
-      if(req!=0) $fatal(1,"mixed burst failed to accept both requests at index %0d",i);
+      if(!accept_vec || !accept_tensor) $fatal(1,"mixed burst failed to accept both requests at index %0d",i);
       @(negedge clk); req=0;
     end
     repeat(8) tick();
@@ -193,7 +196,8 @@ module tb_tessera_execution_system;
       if(completion_valid) begin
         if(completion_client==0 && completion_tag>=8'h80 && completion_tag<=8'h83) begin
           if(completion_status!==0 || stress_seen_vec[completion_tag-8'h80]) $fatal(1,"duplicate or invalid vector burst completion");
-          if(completion_result!=={{(AW-DW){1'b0}},16'( (completion_tag-8'h80)*13-20 + (completion_tag-8'h80)*7+3)}) $fatal(1,"vector burst arithmetic mismatch");
+          stress_expected=(completion_tag-8'h80)*13-20 + (completion_tag-8'h80)*7+3;
+          if(completion_result!=={{(AW-DW){stress_expected[DW-1]}},stress_expected}) $fatal(1,"vector burst arithmetic mismatch");
           stress_seen_vec=stress_seen_vec | (1 << (completion_tag-8'h80));
         end else if(completion_client==2 && completion_tag>=8'h90 && completion_tag<=8'h93) begin
           if(completion_status!==0 || stress_seen_tensor[completion_tag-8'h90]) $fatal(1,"duplicate or invalid tensor burst completion");
