@@ -47,11 +47,13 @@ module tb_tessera_dependency_scoreboard;
     if(!duplicate_alloc || alloc_ready) $fatal(1,"live duplicate tag was accepted");
     @(posedge clk); #1; alloc_valid=0;
 
-    // Fill every scoreboard slot and verify explicit capacity backpressure.
+    // Two client reservations are already live, so add six to fill all eight slots.
     allocate(0,8'h01);
     allocate(0,8'h02);
     allocate(0,8'h03);
     allocate(0,8'h04);
+    allocate(0,8'h05);
+    allocate(0,8'h06);
     if(live_count!=TOTAL) $fatal(1,"scoreboard did not reach full capacity");
     @(negedge clk); alloc_valid=1; alloc_client=3; alloc_tag=8'h99; #1;
     if(alloc_ready) $fatal(1,"allocation accepted while scoreboard full");
