@@ -103,7 +103,27 @@ module tb_tessera_execution_system;
     if(completion_client!==0 || completion_tag!==8'h41 ||
        completion_result!==13 || completion_status!==0) $fatal(1,"reused tag result corrupt");
     tick();
-    $display("PASS shared routing, concurrent clients, signed MAC, backpressure, and live-tag reuse");
+
+    // Unsupported vector opcode must return a tagged error completion.
+    op_bus[0+:OW]=7; tag_bus[0+:TW]=8'h51;
+    @(negedge clk); req=1; #1;
+    if(grant!==1) $fatal(1,"invalid vector opcode was not accepted for error reporting");
+    tick(); req=0; wait_completion(20);
+    if(completion_client!==0 || completion_tag!==8'h51 ||
+       completion_status!==1 || completion_result!==0)
+      $fatal(1,"invalid vector opcode did not return the expected error");
+    tick();
+
+    // Unsupported tensor opcode must also return a tagged error completion.
+    unit_select_bus[1]=1; op_bus[OW+:OW]=2; tag_bus[TW+:TW]=8'h52;
+    @(negedge clk); req=2; #1;
+    if(grant!==2) $fatal(1,"invalid tensor opcode was not accepted for error reporting");
+    tick(); req=0; wait_completion(20);
+    if(completion_client!==1 || completion_tag!==8'h52 ||
+       completion_status!==1 || completion_result!==0)
+      $fatal(1,"invalid tensor opcode did not return the expected error");
+    tick();
+    $display("PASS shared routing, concurrent clients, signed MAC, backpressure, live-tag reuse, and invalid-op errors");
     $finish;
   end
 endmodule
