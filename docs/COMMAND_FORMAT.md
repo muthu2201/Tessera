@@ -1,4 +1,6 @@
-# Tessera command format (prototype v0)
+# Tessera command format (legacy control-plane prototype)
+
+> **Scope note:** This document describes the earlier `tessera_control_plane` FIFO stub, not the current vector/tensor execution system. For the current software-visible operation semantics, see [SOFTWARE_CONTRACT.md](SOFTWARE_CONTRACT.md). The legacy control-plane's opcode classes are provisional and are not the operation codes implemented by the current compute tiles.
 
 This document defines the first software-visible contract for the current RTL path. It is intentionally small; it is not the complete Tessera ISA.
 
