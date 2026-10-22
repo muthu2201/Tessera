@@ -49,7 +49,7 @@ module tb_tessera_dependency_scoreboard;
     if(!duplicate_alloc || alloc_ready) $fatal(1,"live duplicate tag was accepted");
     @(posedge clk); #1; alloc_valid=0;
 
-    // Two client reservations are already live, so add six to fill all eight slots.
+    // Fill all eight scoreboard slots.
     allocate(0,8'h01);
     allocate(0,8'h02);
     allocate(0,8'h03);
@@ -58,12 +58,21 @@ module tb_tessera_dependency_scoreboard;
     allocate(0,8'h06);
     if(live_count!=TOTAL) $fatal(1,"scoreboard did not reach full capacity");
     @(negedge clk); alloc_valid=1; alloc_client=3; alloc_tag=8'h99; #1;
-    if(alloc_ready) $fatal(1,"allocation accepted while scoreboard full");
+    if(alloc_ready) $fatal(1,"allocation accepted while full without a completion");
     @(posedge clk); #1; alloc_valid=0;
 
-    complete(0,8'h01);
-    allocate(3,8'h99);
-    if(live_count!=TOTAL) $fatal(1,"freed scoreboard slot was not reusable");
+    // At full capacity, a same-cycle completion must make its slot reusable
+    // without a bubble or changing the live reservation count.
+    @(negedge clk);
+    alloc_valid=1; alloc_client=3; alloc_tag=8'h99;
+    complete_valid=1; complete_client=0; complete_tag=8'h01; #1;
+    if(!alloc_ready || !complete_known)
+      $fatal(1,"full-capacity simultaneous turnover was not accepted");
+    @(posedge clk); #1; alloc_valid=0; complete_valid=0;
+    if(live_count!=TOTAL || live_bitmap=='0)
+      $fatal(1,"full-capacity simultaneous turnover corrupted live accounting");
+    complete_client=3; complete_tag=8'h99; #1;
+    if(!complete_known) $fatal(1,"replacement tag was not tracked after turnover");
 
     // Drain all known live tags and check accounting returns to zero.
     complete(2,8'h22);
@@ -75,7 +84,8 @@ module tb_tessera_dependency_scoreboard;
     complete(0,8'h06);
     complete(3,8'h99);
     if(live_count!=0 || live_bitmap!='0) $fatal(1,"scoreboard failed to drain cleanly");
-    // Simultaneous release and allocation must preserve live-count accounting.
+
+    // Simultaneous release and allocation at non-full capacity must also work.
     allocate(0,8'hC1);
     @(negedge clk);
     alloc_valid=1; alloc_client=2; alloc_tag=8'hC2;
@@ -99,7 +109,7 @@ module tb_tessera_dependency_scoreboard;
     @(negedge clk); rst_n=1; #1;
     if(live_count!=0 || live_bitmap!='0) $fatal(1,"scoreboard did not remain empty after reset release");
 
-    $display("PASS scoreboard: client-scoped tags, unknown completions, duplicate blocking, full-capacity backpressure, slot reuse");
+    $display("PASS scoreboard: client-scoped tags, unknown completions, duplicate blocking, capacity turnover, reset");
     $finish;
   end
 endmodule
