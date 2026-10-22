@@ -52,11 +52,9 @@ class TesseraModelTests(unittest.TestCase):
             tag = rng.randrange(256)
 
             add = execute(Command(client, "vec", 0, tag, a, b))
-            self.assertEqual(add.result, ((a + b) & 0xFFFF))
-            if add.result & 0x8000:
-                self.assertEqual(add.result, 0xFFFF0000 | (add.result & 0xFFFF))
-            else:
-                self.assertLessEqual(add.result, 0x7FFF)
+            add_low = (a + b) & 0xFFFF
+            expected_add = add_low | (0xFFFF0000 if add_low & 0x8000 else 0)
+            self.assertEqual(add.result, expected_add)
 
             mul_low = execute(Command(client, "vec", 1, tag, a, b))
             low = (a * b) & 0xFFFF
