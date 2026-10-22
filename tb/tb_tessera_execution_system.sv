@@ -71,6 +71,25 @@ module tb_tessera_execution_system;
     @(negedge clk); req=0;
     repeat(4) tick();
     if(completion_occupancy<2) $fatal(1,"backpressure lost a completion");
+    // While ready is low, the head completion payload must remain stable.
+    begin : check_stalled_head
+      logic [CW-1:0] held_client;
+      logic [TW-1:0] held_tag;
+      logic [1:0] held_status;
+      logic [AW-1:0] held_result;
+      if(!completion_valid) $fatal(1,"expected valid completion under backpressure");
+      held_client=completion_client;
+      held_tag=completion_tag;
+      held_status=completion_status;
+      held_result=completion_result;
+      repeat(3) begin
+        tick();
+        if(!completion_valid || completion_client!==held_client ||
+           completion_tag!==held_tag || completion_status!==held_status ||
+           completion_result!==held_result)
+          $fatal(1,"completion payload changed while completion_ready was low");
+      end
+    end
     completion_ready=1;
     seen0=0; seen1=0; timeout=0;
     while((!seen0 || !seen1) && timeout<20) begin
