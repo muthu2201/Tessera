@@ -75,6 +75,15 @@ module tb_tessera_dependency_scoreboard;
     complete(0,8'h06);
     complete(3,8'h99);
     if(live_count!=0 || live_bitmap!='0) $fatal(1,"scoreboard failed to drain cleanly");
+    // Asynchronous reset must clear reservations and accounting immediately.
+    allocate(0,8'hA1);
+    allocate(3,8'hB2);
+    if(live_count!=2) $fatal(1,"reset precondition did not create live reservations");
+    @(negedge clk); rst_n=0; #1;
+    if(live_count!=0 || live_bitmap!='0) $fatal(1,"reset did not clear live scoreboard state");
+    @(negedge clk); rst_n=1; #1;
+    if(live_count!=0 || live_bitmap!='0) $fatal(1,"scoreboard did not remain empty after reset release");
+
     $display("PASS scoreboard: client-scoped tags, unknown completions, duplicate blocking, full-capacity backpressure, slot reuse");
     $finish;
   end
