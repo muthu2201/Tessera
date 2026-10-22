@@ -76,7 +76,7 @@ module tb_tessera_execution_system;
     while((!seen0 || !seen1) && timeout<20) begin
       if(completion_valid) begin
         if(completion_client==0 && completion_tag==8'h31) begin
-          if(completion_result!==56 || completion_status!==0) $fatal(1,"stalled vector completion corrupt");
+          if(completion_result!==56 || completion_status!==0) begin $display("DEBUG vector result client=%0d tag=%h result=%h status=%0d",completion_client,completion_tag,completion_result,completion_status); $fatal(1,"stalled vector completion corrupt"); end
           seen0=1;
         end else if(completion_client==2 && completion_tag==8'h32) begin
           if(completion_result!==(-14) || completion_status!==0) $fatal(1,"signed tensor MAC corrupt");
