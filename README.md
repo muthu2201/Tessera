@@ -1,27 +1,43 @@
-# Tessera RTL CI Starter
+# Tessera RTL Prototype
 
-This repository starts Tessera's hardware-validation path with a small synthesizable command dispatcher and a self-checking SystemVerilog testbench.
+Tessera is an evolving modular execution-fabric prototype. The current RTL integrates a shared command dispatcher, vector and tensor execution tiles, completion buffering, and dependency tracking. This repository validates the digital design through simulation and open-source synthesis and place-and-route experiments; it is not yet a board-qualified accelerator.
 
-## Scope
+## Current architecture
 
-- Typed resource requests and round-robin arbitration
-- Ready/valid-style request acceptance and completion tracking
-- Directed and randomized functional tests for arbitration, backpressure, reset, and payload integrity
-- GitHub Actions CI using Icarus Verilog, Yosys, and nextpnr
+- `rtl/tessera_execution_system.sv`: multi-client shared execution system. Commands select either the vector tile or tensor tile; completions are merged into a shared result FIFO.
+- `rtl/tessera_vec_tile.sv`: 16-bit integer operations: signed add, multiply-low, min, max, and XOR.
+- `rtl/tessera_tensor_tile.sv`: signed 16×16 multiplication and 32-bit multiply-accumulate.
+- `rtl/tessera_dependency_scoreboard.sv`: per-client live-tag tracking, duplicate-allocation protection, completion validation, and capacity backpressure.
+- `rtl/tessera_dispatcher.sv`: round-robin arbitration with state changes only on accepted handshakes.
+- `rtl/tessera_command_fifo.sv`: synchronous ready/valid FIFO.
+- `rtl/tessera_execution_system_fpga_shell.sv`: single-client physical-interface shell for exploratory ECP5 place-and-route. It retains the shared vector/tensor core but does not replace the multi-client top level.
 
-## Provisional FPGA target
+See [the command format](docs/COMMAND_FORMAT.md) and [execution-system resource report](docs/EXECUTION_SYSTEM_RESOURCE_ESTIMATE.md) for the current interface and implementation notes.
 
-The first open-source implementation target is **Lattice ECP5 LFE5U-25F, CABGA381, speed grade 6**. CI maps the dispatcher with Yosys and runs nextpnr-ecp5 place-and-route at a 50 MHz target.
+## Validation
 
-This is a small control-plane validation target, not the final Tessera accelerator. CI currently allows unconstrained I/O because no specific development board or pin map has been selected. Therefore the result is a device-level placement/routing estimate, not a board-ready bitstream or verified timing closure under real board constraints.
+The GitHub Actions workflows run self-checking SystemVerilog testbenches, generic synthesis, ECP5 technology mapping, and an exploratory place-and-route job. Coverage includes:
 
-## Command contract
+- Round-robin arbitration, ready/valid handshakes, reset, and payload stability under backpressure.
+- FIFO full/empty behavior, simultaneous push/pop, and deterministic randomized reference-model stress.
+- Vector signed arithmetic boundaries and unsupported-opcode behavior.
+- Tensor signed multiplication boundaries, MAC overflow/wraparound, and unsupported-opcode behavior.
+- Shared execution, mixed vector/tensor bursts, completion backpressure, duplicate and reused tags, reset recovery, and deterministic transaction stress.
+- Scoreboard capacity, client-isolated tags, unknown completions, slot reuse, reset, and simultaneous allocation/completion.
 
-The prototype record layout, provisional operation classes, ready/valid behavior, and current limitations are documented in [`docs/COMMAND_FORMAT.md`](docs/COMMAND_FORMAT.md).
+Latest validation for commit `62cff63719745b19b34e934ea9e7933e15e1cf2a`:
+- [Full RTL CI passed](https://github.com/muthu2201/Tessera/actions/runs/39722385706).
+- [Execution System CI passed](https://github.com/muthu2201/Tessera/actions/runs/39722385747).
 
-## Run locally
+## Exploratory ECP5 result
 
-Install Icarus Verilog, Yosys, and nextpnr-ecp5, then run:
+The single-client shell has previously completed nextpnr routing for an ECP5-25K, CABGA381, speed-grade-6 target. The recorded post-route estimated maximum frequency was 46.80 MHz against an explicit 40 MHz target. See the resource report for utilization and reproduction links.
+
+This is **not timing sign-off**: the flow allows unconstrained I/O and has no board-specific pin assignment or clock/I/O timing constraints. The raw four-client interface also exceeds the selected package's I/O count, so the shell is a narrower integration experiment, not evidence that the full top-level interface fits that package. No physical FPGA board test has been performed.
+
+## Local commands
+
+Install Icarus Verilog, Yosys, and nextpnr-ecp5, then use the targets defined by the Makefile:
 
 ```sh
 make test
@@ -29,6 +45,8 @@ make synth
 make ecp5
 ```
 
-The CI workflow runs simulation, generic synthesis, ECP5 mapping, and place-and-route on pushes and pull requests.
+Check the Makefile and workflow definitions for the exact target names and tool requirements available in the current checkout.
 
-Passing these checks does not establish power, energy, application performance, or superiority to a commercial GPU.
+## Not yet established
+
+Passing RTL simulation and synthesis does not establish board operation, power, energy efficiency, application-level performance, scalability, or superiority to a commercial GPU. Those claims require defined workloads, a selected board and interface, constrained timing, and measured hardware results.
