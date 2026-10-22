@@ -12,8 +12,9 @@ module tb_tessera_execution_system;
   logic [1:0] completion_status;
   logic [AW-1:0] completion_result;
   logic [$clog2(D+1)-1:0] completion_occupancy;
-  integer timeout, i;
+  integer timeout, i, stress_seen_vec, stress_seen_tensor;
   logic signed [15:0] stress_a, stress_b, stress_expected;
+  logic signed [31:0] tensor_expected;
   logic seen0, seen1;
   always #5 clk=~clk;
   tessera_execution_system dut(.*);
@@ -163,7 +164,49 @@ module tb_tessera_execution_system;
         $fatal(1,"stress add mismatch at transaction %0d",i);
       tick();
     end
-    $display("PASS shared routing, concurrent clients, signed MAC, backpressure, live-tag reuse, invalid-op errors, and 16 deterministic arithmetic stress cases");
+    // Mixed vector/tensor burst with completion backpressure and out-of-order finish tolerance.
+    // Two engines execute independently; each client/tag must emerge exactly once.
+    completion_ready=0;
+    stress_seen_vec=0; stress_seen_tensor=0;
+    for(i=0;i<4;i=i+1) begin
+      op_bus[0+:OW]=0; tag_bus[0+:TW]=8'h80+i;
+      operand_a_bus[0+:DW]=i*13-20; operand_b_bus[0+:DW]=i*7+3;
+      unit_select_bus[0]=0;
+      op_bus[2*OW+:OW]=1; tag_bus[2*TW+:TW]=8'h90+i;
+      operand_a_bus[2*DW+:DW]=i*5-9; operand_b_bus[2*DW+:DW]=i*11-4;
+      accumulator_bus[2*AW+:AW]=i*100-30;
+      unit_select_bus[2]=1;
+      @(negedge clk); req=5; timeout=0;
+      while(req!=0 && timeout<8) begin
+        #1;
+        if(grant[0]) req[0]=0;
+        if(grant[2]) req[2]=0;
+        tick(); timeout=timeout+1;
+      end
+      if(req!=0) $fatal(1,"mixed burst failed to accept both requests at index %0d",i);
+      @(negedge clk); req=0;
+    end
+    repeat(8) tick();
+    if(completion_occupancy!=4) $fatal(1,"mixed burst expected four queued completions, got %0d",completion_occupancy);
+    completion_ready=1; timeout=0;
+    while(completion_occupancy!=0 && timeout<20) begin
+      if(completion_valid) begin
+        if(completion_client==0 && completion_tag>=8'h80 && completion_tag<=8'h83) begin
+          if(completion_status!==0 || stress_seen_vec[completion_tag-8'h80]) $fatal(1,"duplicate or invalid vector burst completion");
+          if(completion_result!=={{(AW-DW){1'b0}},16'( (completion_tag-8'h80)*13-20 + (completion_tag-8'h80)*7+3)}) $fatal(1,"vector burst arithmetic mismatch");
+          stress_seen_vec=stress_seen_vec | (1 << (completion_tag-8'h80));
+        end else if(completion_client==2 && completion_tag>=8'h90 && completion_tag<=8'h93) begin
+          if(completion_status!==0 || stress_seen_tensor[completion_tag-8'h90]) $fatal(1,"duplicate or invalid tensor burst completion");
+          tensor_expected=(completion_tag-8'h90)*5-9;
+          tensor_expected=tensor_expected*((completion_tag-8'h90)*11-4)+((completion_tag-8'h90)*100-30);
+          if(completion_result!==tensor_expected) $fatal(1,"tensor burst MAC mismatch");
+          stress_seen_tensor=stress_seen_tensor | (1 << (completion_tag-8'h90));
+        end else $fatal(1,"unexpected client/tag in mixed burst");
+      end
+      tick(); timeout=timeout+1;
+    end
+    if(stress_seen_vec!==15 || stress_seen_tensor!==15) $fatal(1,"mixed burst dropped one or more completions");
+    $display("PASS shared routing, concurrent clients, signed MAC, backpressure, live-tag reuse, invalid-op errors, 16 arithmetic cases, and mixed burst stress");
     $finish;
   end
 endmodule
