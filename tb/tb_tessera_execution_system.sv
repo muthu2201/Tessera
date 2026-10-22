@@ -52,6 +52,41 @@ module tb_tessera_execution_system;
        completion_result!==17 || completion_status!==0) $fatal(1,"tensor result");
     tick();
 
+    // Signed boundary checks through dispatcher, tile, and shared completion FIFO.
+    // Vector addition wraps at 16 bits, then the system sign-extends to 32 bits.
+    unit_select_bus[0]=0; op_bus[0+:OW]=0; tag_bus[0+:TW]=8'h23;
+    operand_a_bus[0+:DW]=16'h7FFF; operand_b_bus[0+:DW]=16'h0001;
+    @(negedge clk); req=1; #1;
+    if(grant!==1) $fatal(1,"vector signed-boundary request not accepted");
+    tick(); req=0; wait_completion(20);
+    if(completion_client!==0 || completion_tag!==8'h23 ||
+       completion_result!==32'hFFFF8000 || completion_status!==0)
+      $fatal(1,"vector signed overflow/sign extension corrupted in execution system");
+    tick();
+
+    // Extreme signed tensor multiplication must preserve the full 32-bit product.
+    unit_select_bus[1]=1; op_bus[OW+:OW]=0; tag_bus[TW+:TW]=8'h24;
+    operand_a_bus[DW+:DW]=-16'sd32768; operand_b_bus[DW+:DW]=-16'sd32768;
+    @(negedge clk); req=2; #1;
+    if(grant!==2) $fatal(1,"tensor signed-boundary request not accepted");
+    tick(); req=0; wait_completion(20);
+    if(completion_client!==1 || completion_tag!==8'h24 ||
+       completion_result!==32'd1073741824 || completion_status!==0)
+      $fatal(1,"tensor extreme signed product corrupted in execution system");
+    tick();
+
+    // MAC accumulation wraps modulo 2^32 and must retain its signed bit pattern.
+    op_bus[OW+:OW]=1; tag_bus[TW+:TW]=8'h25;
+    operand_a_bus[DW+:DW]=16'sd32767; operand_b_bus[DW+:DW]=16'sd32767;
+    accumulator_bus[AW+:AW]=32'h7FFFFFFF;
+    @(negedge clk); req=2; #1;
+    if(grant!==2) $fatal(1,"tensor MAC overflow request not accepted");
+    tick(); req=0; wait_completion(20);
+    if(completion_client!==1 || completion_tag!==8'h25 ||
+       completion_result!==32'hBFFF8000 || completion_status!==0)
+      $fatal(1,"tensor MAC overflow corrupted in execution system");
+    tick();
+
     // Simultaneous vector/tensor requests while the consumer is stalled.
     // Both engines may finish independently; neither result may be lost.
     completion_ready=0;
