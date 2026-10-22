@@ -40,8 +40,10 @@ module tb_tessera_dependency_scoreboard;
     if(live_count!=2) $fatal(1,"unknown completion changed live count");
 
     complete(1,8'h22);
+    // alloc_ready depends on the candidate client/tag even when alloc_valid is low.
+    // Probe an unused tag to verify the freed capacity rather than the still-live tag.
+    alloc_client=1; alloc_tag=8'h23; #1;
     if(live_count!=1 || !alloc_ready) $fatal(1,"known completion failed to free a slot");
-    // Reusing a completed tag is legal; a still-live tag remains blocked.
     allocate(1,8'h22);
     @(negedge clk); alloc_valid=1; alloc_client=2; alloc_tag=8'h22; #1;
     if(!duplicate_alloc || alloc_ready) $fatal(1,"live duplicate tag was accepted");
