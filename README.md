@@ -12,9 +12,11 @@ Tessera is an evolving modular execution-fabric prototype. The current RTL integ
 - `rtl/tessera_command_fifo.sv`: synchronous ready/valid FIFO.
 - `rtl/tessera_execution_system_fpga_shell.sv`: single-client physical-interface shell for exploratory ECP5 place-and-route. It retains the shared vector/tensor core but does not replace the multi-client top level.
 
-See [the command format](docs/COMMAND_FORMAT.md) and [execution-system resource report](docs/EXECUTION_SYSTEM_RESOURCE_ESTIMATE.md) for the current interface and implementation notes.
+See [the command format](docs/COMMAND_FORMAT.md), [software-first contract](docs/SOFTWARE_CONTRACT.md), and [execution-system resource report](docs/EXECUTION_SYSTEM_RESOURCE_ESTIMATE.md) for interface and implementation notes. The bit-accurate Python reference model lives in `software/tessera_model.py`.
 
 ## Validation
+
+The software reference model is tested in its own parallel CI job. Run it locally with `python -m unittest discover -s software -p 'test_*.py' -v` or `make software-test`.
 
 The GitHub Actions workflows run self-checking SystemVerilog testbenches, generic synthesis, ECP5 technology mapping, and an exploratory place-and-route job. Coverage includes:
 
