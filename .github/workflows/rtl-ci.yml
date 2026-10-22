@@ -61,7 +61,7 @@ jobs:
           case "${{ matrix.target }}" in
             dispatcher) yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv; hierarchy -check -top tessera_dispatcher; proc; check; synth -top tessera_dispatcher; check; stat' ;;
             fifo) yosys -p 'read_verilog -sv rtl/tessera_command_fifo.sv; hierarchy -check -top tessera_command_fifo; proc; check; synth -top tessera_command_fifo; check; stat' ;;
-            command-path) yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_command_path.sv; hierarchy -check -top tessera_command_path; proc; check; synth -top tessera_command_path; check; synth -top tessera_command_path; check; stat' ;;
+            command-path) yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_command_path.sv; hierarchy -check -top tessera_command_path; proc; check; synth -top tessera_command_path; check; stat' ;;
             completion-queue) yosys -p 'read_verilog -sv rtl/tessera_command_fifo.sv rtl/tessera_completion_queue.sv; hierarchy -check -top tessera_completion_queue; proc; check; synth -top tessera_completion_queue; check; stat' ;;
             control-plane) yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_command_path.sv rtl/tessera_completion_queue.sv rtl/tessera_control_plane.sv; hierarchy -check -top tessera_control_plane; proc; check; synth -top tessera_control_plane; check; stat' ;;
             vector-tile) yosys -p 'read_verilog -sv rtl/tessera_vec_tile.sv; hierarchy -check -top tessera_vec_tile; proc; check; synth -top tessera_vec_tile; check; stat' ;;
