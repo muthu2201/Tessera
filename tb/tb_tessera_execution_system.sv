@@ -245,7 +245,31 @@ module tb_tessera_execution_system;
       tick(); timeout=timeout+1;
     end
     if(stress_seen_vec!==3 || stress_seen_tensor!==3) $fatal(1,"mixed burst dropped one or more completions");
-    $display("PASS shared routing, concurrent clients, signed MAC, backpressure, live-tag reuse, invalid-op errors, 16 arithmetic cases, and FIFO-full mixed burst stress");
+
+    // Reset must flush a queued completion and release its live tag reservation.
+    completion_ready=0; unit_select_bus[0]=0; op_bus[0+:OW]=0;
+    tag_bus[0+:TW]=8'hA5; operand_a_bus[0+:DW]=21; operand_b_bus[0+:DW]=21;
+    @(negedge clk); req=1; #1;
+    if(grant!==1) $fatal(1,"reset test request not accepted");
+    tick(); req=0; wait_completion(20);
+    if(completion_occupancy!==1 || completion_tag!==8'hA5 || completion_result!==42)
+      $fatal(1,"reset test completion did not reach queue");
+    @(negedge clk); rst_n=0; #1;
+    if(completion_valid || completion_occupancy!==0)
+      $fatal(1,"reset did not flush completion FIFO");
+    @(negedge clk); rst_n=1; completion_ready=1; #1;
+    if(completion_valid || completion_occupancy!==0)
+      $fatal(1,"completion FIFO not empty after reset release");
+    // Same client/tag must be allocatable again after reset cleared reservations.
+    @(negedge clk); req=1; #1;
+    if(grant!==1) $fatal(1,"reset failed to release live tag reservation");
+    tick(); req=0; wait_completion(20);
+    if(completion_client!==0 || completion_tag!==8'hA5 ||
+       completion_result!==42 || completion_status!==0)
+      $fatal(1,"post-reset request completion mismatch");
+    tick();
+
+    $display("PASS shared routing, signed boundaries, reset flush/tag release, concurrent clients, backpressure, live-tag reuse, invalid-op errors, 16 arithmetic cases, and FIFO-full mixed burst stress");
     $finish;
   end
 endmodule
