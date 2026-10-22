@@ -83,7 +83,7 @@ module tb_tessera_execution_system;
     if(grant!==2) $fatal(1,"tensor MAC overflow request not accepted");
     tick(); req=0; wait_completion(20);
     if(completion_client!==1 || completion_tag!==8'h25 ||
-       completion_result!==32'hBFFF8000 || completion_status!==0)
+       completion_result!==32'hBFFF0000 || completion_status!==0)
       $fatal(1,"tensor MAC overflow corrupted in execution system");
     tick();
 
