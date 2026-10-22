@@ -49,7 +49,7 @@ jobs:
         run: |
           set -o pipefail
           yosys -p 'read_verilog -sv rtl/tessera_dispatcher.sv rtl/tessera_command_fifo.sv rtl/tessera_dependency_scoreboard.sv rtl/tessera_vec_tile.sv rtl/tessera_tensor_tile.sv rtl/tessera_execution_system.sv rtl/tessera_execution_system_fpga_shell.sv; hierarchy -check -top tessera_execution_system_fpga_shell; synth_ecp5 -top tessera_execution_system_fpga_shell -json /tmp/tessera-execution-system.json; stat' 2>&1 | tee /tmp/tessera-full-map.log
-          nextpnr-ecp5 --25k --package CABGA381 --speed 6 --json /tmp/tessera-execution-system.json --textcfg /tmp/tessera-execution-system.config --lpf-allow-unconstrained 2>&1 | tee /tmp/tessera-full-place-route.log
+          nextpnr-ecp5 --25k --package CABGA381 --speed 6 --freq 40 --json /tmp/tessera-execution-system.json --textcfg /tmp/tessera-execution-system.config --lpf-allow-unconstrained 2>&1 | tee /tmp/tessera-full-place-route.log
       - name: Upload integrated FPGA reports
         if: always()
         uses: actions/upload-artifact@v4
