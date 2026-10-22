@@ -75,6 +75,20 @@ module tb_tessera_dependency_scoreboard;
     complete(0,8'h06);
     complete(3,8'h99);
     if(live_count!=0 || live_bitmap!='0) $fatal(1,"scoreboard failed to drain cleanly");
+    // Simultaneous release and allocation must preserve live-count accounting.
+    allocate(0,8'hC1);
+    @(negedge clk);
+    alloc_valid=1; alloc_client=2; alloc_tag=8'hC2;
+    complete_valid=1; complete_client=0; complete_tag=8'hC1; #1;
+    if(!alloc_ready || !complete_known)
+      $fatal(1,"simultaneous allocation/completion preconditions failed");
+    @(posedge clk); #1; alloc_valid=0; complete_valid=0;
+    if(live_count!=1 || !live_bitmap[2*DEPTH+0])
+      $fatal(1,"simultaneous allocation/completion corrupted scoreboard accounting");
+    complete(2,8'hC2);
+    if(live_count!=0 || live_bitmap!='0)
+      $fatal(1,"simultaneous allocation/completion failed to drain");
+
     // Asynchronous reset must clear reservations and accounting immediately.
     allocate(0,8'hA1);
     allocate(3,8'hB2);
