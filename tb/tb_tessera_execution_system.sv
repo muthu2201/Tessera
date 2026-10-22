@@ -86,7 +86,24 @@ module tb_tessera_execution_system;
       tick(); timeout=timeout+1;
     end
     if(!seen0 || !seen1) $fatal(1,"completion missing after backpressure release");
-    $display("PASS shared vector/tensor routing, concurrent clients, signed MAC, and completion backpressure");
+    // A client/tag pair remains reserved until its completion is consumed.
+    completion_ready=0;
+    tag_bus[0+:TW]=8'h41; operand_a_bus[0+:DW]=6; operand_b_bus[0+:DW]=7;
+    @(negedge clk); req=1; #1;
+    if(grant!==1) $fatal(1,"initial tag reservation command not accepted");
+    tick(); req=0; wait_completion(20);
+    @(negedge clk); req=1; #1;
+    if(grant!==0) $fatal(1,"duplicate live tag was accepted");
+    repeat(2) begin tick(); #1; if(grant!==0) $fatal(1,"duplicate tag escaped while completion stalled"); end
+    req=0; completion_ready=1; tick();
+    // The old completion is now consumed, so the same tag may be reused.
+    @(negedge clk); req=1; #1;
+    if(grant!==1) $fatal(1,"tag was not released after completion consumption");
+    tick(); req=0; wait_completion(20);
+    if(completion_client!==0 || completion_tag!==8'h41 ||
+       completion_result!==13 || completion_status!==0) $fatal(1,"reused tag result corrupt");
+    tick();
+    $display("PASS shared routing, concurrent clients, signed MAC, backpressure, and live-tag reuse");
     $finish;
   end
 endmodule
